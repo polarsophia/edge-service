@@ -4,9 +4,111 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 15s
 
+  session:
+    redis:
+      namespace: polar:edge
+    timeout: 10m
+
+  cloud:
+    config:
+      uri: http://localhost:8888
+      request-connect-timeout: 5000
+      request-read-timeout: 5000
+      fail-fast: false
+      retry:
+        initial-interval: 1000
+        max-attempts: 3
+        max-interval: 5000
+        multiplier: 1.5
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: catalog-route
+              uri: ${CATALOG_SERVICE_URL:http://localhost:8080}/books
+              predicates:
+                - Path=/books/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: catalogCircuitBreaker
+                    fallbackUri: forward:/catalog-fallback
+
+            - id: orders-route
+              uri: ${ORDER_SERVICE_URL:http://localhost:8090}/orders
+              predicates:
+                - Path=/orders/**
+              filters:
+                - name: CircuitBreaker
+                  args:
+                    name: ordersCircuitBreaker
+                    fallbackUri: forward:/orders-fallback
+          httpclient: # for downstream service calls
+            connect-timeout: 2000
+            response-timeout: 5s
+            pool:
+              type: elastic
+              max-idle-time: 15s
+              max-life-time: 60s
+
+          default-filters:
+            - name: Retry
+              args:
+                retries: 3
+                statuses: BAD_GATEWAY, GATEWAY_TIMEOUT, SERVICE_UNAVAILABLE
+                methods: GET
+                series: SERVER_ERROR
+                exceptions: java.io.IOException, java.util.concurrent.TimeoutException
+                backoff:
+                  firstBackoff: 50ms
+                  maxBackoff: 1s
+                  factor: 2
+                  basedOnPreviousValue: false
+
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenish-rate: 10 # requests per second
+                redis-rate-limiter.burst-capacity: 20 # maximum burst capacity
+                redis-rate-limiter.requested-tokens: 1 # tokens per request
+
+            - name: SaveSession
+              args:
+                always-save: true
+
+          redis-rate-limiter:
+            include-headers: false
+  data:
+    redis:
+      connect-timeout: 2s
+      timeout: 1s
+      host: localhost
+      port: 6379
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 20
+        permitted-number-of-calls-in-half-open-state: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15s
+        record-exceptions:
+        - java.io.IOException
+        - java.util.concurrent.TimeoutException
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 2s # takes precedence over the global setting
+
 server:
   port: 9000
-  netty:
+  netty: # for gateway calls
     connection-timeout: 2s
     idle-timeout: 15s
   shutdown: graceful
+
+logging:
+  level:
+    io.github.resilience4j: DEBUG
+    org.springframework.session: DEBUG
+
