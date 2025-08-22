@@ -27,7 +27,7 @@ spec:
             - name: BPL_JVM_THREAD_COUNT
               value: '10'
             - name: SPRING_DATA_REDIS_HOST
-              value: http://polar-redis
+              value: polar-redis
             - name: CATALOG_SERVICE_URL
               value: http://catalog-service
             - name: ORDER_SERVICE_URL
