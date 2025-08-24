@@ -12,7 +12,7 @@ spring:
             client-id: edge-service
             client-secret: edge-secret
             authorization-grant-type: authorization_code
-            scope: openid
+            scope: openid, roles
         provider:
             keycloak:
                 issuer-uri: http://localhost:9090/realms/PolarBookshop
@@ -89,16 +89,15 @@ spring:
                 redis-rate-limiter.burst-capacity: 20 # maximum burst capacity
                 redis-rate-limiter.requested-tokens: 1 # tokens per request
 
-            - name: SaveSession
-              args:
-                always-save: true
+            - SaveSession
+            - TokenRelay
 
           redis-rate-limiter:
             include-headers: false
   data:
     redis:
       connect-timeout: 2s
-      timeout: 1s
+      timeout: 2s
       host: localhost
       port: 6379
 
@@ -116,17 +115,19 @@ resilience4j:
   timelimiter:
     configs:
       default:
-        timeout-duration: 2s # takes precedence over the global setting
+        timeout-duration: 5s # takes precedence over the global setting
 
 server:
   port: 9000
   netty: # for gateway calls
-    connection-timeout: 2s
+    connection-timeout: 5s
     idle-timeout: 15s
   shutdown: graceful
 
-logging:
-  level:
-    io.github.resilience4j: DEBUG
-    org.springframework.session: DEBUG
+#logging:
+#  level:
+#    io.github.resilience4j: DEBUG
+#    org.springframework.session: DEBUG
+#    org.springframework.security: DEBUG
+#    org.springframework.cloud: DEBUG
 
