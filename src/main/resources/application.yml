@@ -4,6 +4,18 @@ spring:
   lifecycle:
     timeout-per-shutdown-phase: 15s
 
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: edge-service
+            client-secret: edge-secret
+            authorization-grant-type: authorization_code
+            scope: openid
+        provider:
+            keycloak:
+                issuer-uri: http://localhost:9090/realms/PolarBookshop
   session:
     redis:
       namespace: polar:edge
@@ -44,6 +56,11 @@ spring:
                   args:
                     name: ordersCircuitBreaker
                     fallbackUri: forward:/orders-fallback
+            - id: spa-route
+              uri: ${SPA_URL:http://localhost:9009}
+              predicates:
+                - Path=/, /*.css, /*.js, /*.html, /favicon.ico, /assets/**
+
           httpclient: # for downstream service calls
             connect-timeout: 2000
             response-timeout: 5s

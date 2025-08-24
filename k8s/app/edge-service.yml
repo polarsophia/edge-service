@@ -34,6 +34,10 @@ spec:
               value: http://order-service
             - name: SPRING_CLOUD_CONFIG_URI
               value: http://config-service
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER-URI
+              value: http://polar-keycloak/realms/PolarBookshop
+            - name: SPA_URL
+              value: http://spa-service
 
 ---
 
